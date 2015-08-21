@@ -41,7 +41,7 @@ import calendar
 import threading
 import platform
 import subprocess
-from timestamp import Timestamp
+from mast.timestamp import Timestamp
 
 try:
     mast_home = os.environ["MAST_HOME"]
@@ -311,7 +311,7 @@ def parse_atom(parse, minmax):
             return set(noskips[::increment])
 
 class Plugin(threading.Thread):
-    @logged("mast.cron")
+
     def __init__(self, crontab=os.path.join(mast_home, "etc", "crontab")):
         """Plugin is a subclass of thread which reads crontab once
         every minute to see if any tasks defined in crontab are due.
@@ -337,35 +337,40 @@ class Plugin(threading.Thread):
         logger = make_logger("mast.cron")
         while not self._stop:
             logger.info("Checking for tasks which are sceduled to run.")
-            with open(self.crontab, "r") as fin:
-                for line in fin.readlines():
-                    logger.info("Found task '{}'...checking if task is due...".format(line.strip()))
-                    job = CronExpression(line.strip())
-                    try:
-                        if job.check_trigger(time.gmtime(time.time())[:5]):
-                            if "Windows" in platform.system():
-                                si = subprocess.STARTUPINFO()
-                                si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                                out = subprocess.check_output(
-                                    job.comment.strip(),
-                                    shell=True,
-                                    stdin=subprocess.PIPE,
-                                    stderr=subprocess.PIPE,
-                                    startupinfo=si)
-                            elif "Linux" in platform.system():
-                                out = subprocess.check_output(
-                                    job.comment.strip(),
-                                    shell=True,
-                                    stderr=subprocess.STDOUT)
-                            if out:
-                                logger.info("Task '{}' completed. Output: '{}'".format(
-                                    line,
-                                    out.replace("\n", "").replace("\r", "")))
-                        else:
-                            logger.info("Task '{}' not scheduled to run.".format(job.comment))
-                    except Exception:
-                        logger.exception("Sorry an unhandled exception occurred. Attempting to continue...")
-                        pass
+            if os.path.exists(self.crontab):
+                with open(self.crontab, "r") as fin:
+                    for line in fin.readlines():
+                        logger.info("Found task '{}'...checking if task is due...".format(line.strip()))
+                        job = CronExpression(line.strip())
+                        try:
+                            if job.check_trigger(time.gmtime(time.time())[:5]):
+                                if "Windows" in platform.system():
+                                    si = subprocess.STARTUPINFO()
+                                    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                                    out = subprocess.check_output(
+                                        job.comment.strip(),
+                                        shell=True,
+                                        stdin=subprocess.PIPE,
+                                        stderr=subprocess.PIPE,
+                                        startupinfo=si)
+                                elif "Linux" in platform.system():
+                                    out = subprocess.check_output(
+                                        job.comment.strip(),
+                                        shell=True,
+                                        stderr=subprocess.STDOUT)
+                                if out:
+                                    logger.info("Task '{}' completed. Output: '{}'".format(
+                                        line,
+                                        out.replace("\n", "").replace("\r", "")))
+                            else:
+                                logger.info("Task '{}' not scheduled to run.".format(job.comment))
+                        except Exception:
+                            logger.exception("Sorry an unhandled exception occurred. Attempting to continue...")
+                            pass
+            else:
+                logger.info(
+                    "Crontab file does not exist, to enable this"
+                    "plugin please create the file {}".format(self.crontab))
             # Check every minute, otherwise you hit an interesting bug.
             # every time it checks for pending jobs if it's within the minute,
             # The scheduler doesn't take into account if the job already ran in
