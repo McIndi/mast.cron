@@ -41,7 +41,6 @@ import calendar
 import threading
 import platform
 import subprocess
-from mast.timestamp import Timestamp
 
 try:
     mast_home = os.environ["MAST_HOME"]
@@ -71,6 +70,7 @@ SUBSTITUTIONS = {
     "@midnight": "0 0 * * *",
     "@hourly": "0 * * * *"
 }
+
 
 class CronExpression(object):
     def __init__(self, line, epoch=DEFAULT_EPOCH, epoch_utc_offset=0):
@@ -307,8 +307,9 @@ def parse_atom(parse, minmax):
         else:
             # Example: 12-4/2; (12, 12 + n, ..., 12 + m*n) U (n_0, ..., 4)
             noskips = list(xrange(prefix, minmax[1] + 1))
-            noskips+= list(xrange(minmax[0], suffix + 1))
+            noskips += list(xrange(minmax[0], suffix + 1))
             return set(noskips[::increment])
+
 
 class Plugin(threading.Thread):
 
@@ -331,22 +332,27 @@ class Plugin(threading.Thread):
 
     @logged("mast.cron")
     def run(self):
-        """Overloaded run method. This thread will check crontab every minute
-        for tasks which are due to run. If a task is found to be due, execute it,
-        otherwise log a message and continue """
+        """Overloaded run method. This thread will check crontab
+        every minute for tasks which are due to run. If a task
+        is found to be due, execute it, otherwise log a message
+        and continue """
         logger = make_logger("mast.cron")
         while not self._stop:
             logger.info("Checking for tasks which are sceduled to run.")
             if os.path.exists(self.crontab):
                 with open(self.crontab, "r") as fin:
                     for line in fin.readlines():
-                        logger.info("Found task '{}'...checking if task is due...".format(line.strip()))
+                        logger.info(
+                            "Found task "
+                            "'{}'...checking if task is due...".format(
+                                line.strip()))
                         job = CronExpression(line.strip())
                         try:
                             if job.check_trigger(time.gmtime(time.time())[:5]):
                                 if "Windows" in platform.system():
                                     si = subprocess.STARTUPINFO()
-                                    si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                                    si.dwFlags |= \
+                                        subprocess.STARTF_USESHOWWINDOW
                                     out = subprocess.check_output(
                                         job.comment.strip(),
                                         shell=True,
@@ -361,21 +367,27 @@ class Plugin(threading.Thread):
                                 if out:
                                     logger.info("Task '{}' completed. Output: '{}'".format(
                                         line,
-                                        out.replace("\n", "").replace("\r", "")))
+                                        out.replace(
+                                            "\n", "").replace(
+                                                "\r", "")))
                             else:
-                                logger.info("Task '{}' not scheduled to run.".format(job.comment))
+                                logger.info(
+                                    "Task '{}' not scheduled to run.".format(
+                                        job.comment))
                         except Exception:
-                            logger.exception("Sorry an unhandled exception occurred. Attempting to continue...")
+                            logger.exception(
+                                "Sorry an unhandled exception occurred. "
+                                "Attempting to continue...")
                             pass
             else:
                 logger.info(
                     "Crontab file does not exist, to enable this"
                     "plugin please create the file {}".format(self.crontab))
             # Check every minute, otherwise you hit an interesting bug.
-            # every time it checks for pending jobs if it's within the minute,
-            # The scheduler doesn't take into account if the job already ran in
-            # the current minute. Rather than tackle this bug and make this more
-            # complicated than it has to be, I figured just supporting every minute
-            # was good enough.
+            # every time it checks for pending jobs if it's within
+            # the minute, The scheduler doesn't take into account if
+            # the job already ran in the current minute. Rather than
+            # tackle this bug and make this more complicated than it
+            # has to be, I figured just supporting every minute was
+            # good enough.
             time.sleep(60)
-
