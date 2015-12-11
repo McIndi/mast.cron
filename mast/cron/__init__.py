@@ -1,36 +1,13 @@
 #!/usr/bin/env python
 """
+This module provides a `mastd plugin` which will check for the existence
+of `$MAST_HOME/etc/crontab`. If this file exists, it is scanned for
+scheduled jobs. If scheduled jobs are present, they are checked to see
+if they are due. If the scheduled job is due, then it is executed.
 
-This module provides a class for cron-like scheduling systems, and
-exposes the function used to convert static cron expressions to Python
-sets.
-
-CronExpression objects are instantiated with a cron formatted string
-that represents the times when the trigger is active. When using
-expressions that contain periodic terms, an extension of cron created
-for this module, a starting epoch should be explicitly defined. When the
-epoch is not explicitly defined, it defaults to the Unix epoch. Periodic
-terms provide a method of recurring triggers based on arbitrary time
-periods.
-
-
-Standard Cron Triggers:
->>> job = CronExpression("0 0 * * 1-5/2 find /var/log -delete")
->>> job.check_trigger((2010, 11, 17, 0, 0))
-True
->>> job.check_trigger((2012, 12, 21, 0 , 0))
-False
-
-Periodic Trigger:
->>> job = CronExpression("0 %9 * * * Feed 'it'", (2010, 5, 1, 7, 0, -6))
->>> job.comment
-"Feed 'it'"
->>> job.check_trigger((2010, 5, 1, 7, 0), utc_offset=-6)
-True
->>> job.check_trigger((2010, 5, 1, 16, 0), utc_offset=-6)
-True
->>> job.check_trigger((2010, 5, 2, 1, 0), utc_offset=-6)
-True
+The file in `$MAST_HOME/etc/crontab` is expected to be a newline-seperated
+list of [cron expressions](https://en.wikipedia.org/wiki/Cron#Format)
+and will be evaluated every minute without the need to reload mastd.
 """
 
 import os
@@ -110,6 +87,9 @@ class CronExpression(object):
             self.epoch = epoch
 
     def __str__(self):
+        """
+        Returns a `str` representation of this cron Expression.
+        """
         base = self.__class__.__name__ + "(%s)"
         cron_line = self.string_tab + [str(self.comment)]
         if not self.comment:
@@ -121,6 +101,10 @@ class CronExpression(object):
             return base % arguments
 
     def __repr__(self):
+        """
+        Returns a rerpresentation (same as `__str__`) of
+        this cron expression.
+        """
         return str(self)
 
     def compute_numtab(self):
@@ -259,17 +243,19 @@ def parse_atom(parse, minmax):
     inclusive upper and lower limits of the expression.
 
     Examples:
-    >>> parse_atom("1-5",(0,6))
-    set([1, 2, 3, 4, 5])
 
-    >>> parse_atom("*/6",(0,23))
-    set([0, 6, 12, 18])
+        :::python
+        >>> parse_atom("1-5",(0,6))
+        set([1, 2, 3, 4, 5])
 
-    >>> parse_atom("18-6/4",(0,23))
-    set([18, 22, 0, 4])
+        >>> parse_atom("*/6",(0,23))
+        set([0, 6, 12, 18])
 
-    >>> parse_atom("*/9",(0,23))
-    set([0, 9, 18])
+        >>> parse_atom("18-6/4",(0,23))
+        set([18, 22, 0, 4])
+
+        >>> parse_atom("*/9",(0,23))
+        set([0, 9, 18])
     """
     parse = parse.strip()
     increment = 1
@@ -312,7 +298,12 @@ def parse_atom(parse, minmax):
 
 
 class Plugin(threading.Thread):
-
+    """
+    This class is a mastd plugin, which is a subclass of
+    `threading.Thread`. This plugin will read `$MAST_HOME/etc/crontab`
+    each minute and parse each line as a cron-style task. If the task
+    is due, it will be executed.
+    """
     def __init__(self, crontab=os.path.join(mast_home, "etc", "crontab")):
         """Plugin is a subclass of thread which reads crontab once
         every minute to see if any tasks defined in crontab are due.
@@ -332,10 +323,12 @@ class Plugin(threading.Thread):
 
     @logged("mast.cron")
     def run(self):
-        """Overloaded run method. This thread will check crontab
+        """
+        Overloaded run method. This thread will check crontab
         every minute for tasks which are due to run. If a task
         is found to be due, execute it, otherwise log a message
-        and continue """
+        and continue
+        """
         logger = make_logger("mast.cron")
         while not self._stop:
             logger.info("Checking for tasks which are sceduled to run.")
