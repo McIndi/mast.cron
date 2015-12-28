@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 """
-This module provides a `mastd plugin` which will check for the existence
+_module_: `mast.cron`
+
+This module does not provide any user-facing functionality. Interfacing
+with this module should be done through the file `$MAST_HOME/etc/crontab`.
+
+This module provides a `mastd_plugin` which will check for the existence
 of `$MAST_HOME/etc/crontab`. If this file exists, it is scanned for
 scheduled jobs. If scheduled jobs are present, they are checked to see
 if they are due. If the scheduled job is due, then it is executed.
@@ -50,8 +55,17 @@ SUBSTITUTIONS = {
 
 
 class CronExpression(object):
+    """
+    _class_: `mast.cron.CronExpression(object)`
+
+    This class represents a single cron expression. This should not
+    need to be used directly, please use `$MAST_HOME/etc/crontab` to
+    modify the behavior of this module.
+    """
     def __init__(self, line, epoch=DEFAULT_EPOCH, epoch_utc_offset=0):
         """
+        _method_: `mast.cron.CronExpression.__init__(self, line, epoch=DEFAULT_EPOCH, epoch_utc_offset=0)`
+
         Instantiates a CronExpression object with an optionally defined epoch.
         If the epoch is defined, the UTC offset can be specified one of two
         ways: as the sixth element in 'epoch' or supplied in epoch_utc_offset.
@@ -88,6 +102,8 @@ class CronExpression(object):
 
     def __str__(self):
         """
+        _method_: `mast.cron.CronExpression.__str__(self)`
+
         Returns a `str` representation of this cron Expression.
         """
         base = self.__class__.__name__ + "(%s)"
@@ -102,6 +118,8 @@ class CronExpression(object):
 
     def __repr__(self):
         """
+        _method_: `mast.cron.CronExpression.__repr__(self)`
+
         Returns a rerpresentation (same as `__str__`) of
         this cron expression.
         """
@@ -109,6 +127,8 @@ class CronExpression(object):
 
     def compute_numtab(self):
         """
+        _method_: `mast.cron.CronExpression.compute_numtab(self)`
+
         Recomputes the sets for the static ranges of the trigger time.
 
         This method should only be called by the user if the string_tab
@@ -137,6 +157,8 @@ class CronExpression(object):
 
     def check_trigger(self, date_tuple, utc_offset=0):
         """
+        _method_: `mast.cron.CronExpression.check_trigger(self, date_tuple, utc_offset=0)`
+
         Returns boolean indicating if the trigger is active at the given time.
         The date tuple should be in the local time. Unless periodicities are
         used, utc_offset does not need to be specified. If periodicities are
@@ -238,6 +260,8 @@ class CronExpression(object):
 
 def parse_atom(parse, minmax):
     """
+    _function_: `mast.cron.parse_atom(parse, minmax)`
+
     Returns a set containing valid values for a given cron-style range of
     numbers. The 'minmax' arguments is a two element iterable containing the
     inclusive upper and lower limits of the expression.
@@ -299,13 +323,18 @@ def parse_atom(parse, minmax):
 
 class Plugin(threading.Thread):
     """
+    _class_: `mast.cron.Plugin(threading.Thread)`
+
     This class is a mastd plugin, which is a subclass of
     `threading.Thread`. This plugin will read `$MAST_HOME/etc/crontab`
     each minute and parse each line as a cron-style task. If the task
     is due, it will be executed.
     """
     def __init__(self, crontab=os.path.join(mast_home, "etc", "crontab")):
-        """Plugin is a subclass of thread which reads crontab once
+        """
+        _method_: `mast.cron.Plugin.__init__(self, crontab=os.path.join(mast_home, "etc", "crontab"))`
+
+        Plugin is a subclass of thread which reads crontab once
         every minute to see if any tasks defined in crontab are due.
         If a task is due it will be executed, if not it will be logged
         that it is not due.
@@ -318,12 +347,18 @@ class Plugin(threading.Thread):
 
     @logged("mast.cron")
     def stop(self):
-        """End this Scheduler Thread"""
+        """
+        _method_: `mast.cron.Plugin.stop(self)`
+
+        Ends this Scheduler Thread
+        """
         self._stop = True
 
     @logged("mast.cron")
     def run(self):
         """
+        _method_: `mast.cron.Plugin.run(self)`
+
         Overloaded run method. This thread will check crontab
         every minute for tasks which are due to run. If a task
         is found to be due, execute it, otherwise log a message
