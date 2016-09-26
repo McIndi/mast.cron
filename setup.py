@@ -30,6 +30,5 @@ setup(
         "Topic :: Utilities",
         "License :: OSI Approved :: GPLv3",
     ],
-    install_requires=["mast.logging", "mast.config", "mast.daemon"]
 )
 
